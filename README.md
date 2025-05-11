@@ -5,8 +5,7 @@ First time run:
 ```bash
 npm install
 ```
-First, run the development server:
-
+Run the program by: 
 ```bash
 npm run dev
 ```
