@@ -66,7 +66,7 @@ export default function Home() {
 
         {totalWeight !== null && (
           <Card className="p-4 bg-white shadow-md">
-            <p className="text-lg font-medium">Total Path Weight: {totalWeight.toFixed(2)}</p>
+            <p className="text-lg font-medium">Total Path Weight: {totalWeight.toFixed(0)}</p>
           </Card>
         )}
       </div>
