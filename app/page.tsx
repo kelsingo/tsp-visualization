@@ -99,56 +99,101 @@ class TSPVisualizer {
     this.setAnimating = setAnimating
   }
 
+  // Check if a new node position is valid (not too close to existing nodes)
+  isValidNodePosition(x, y, minDistance) {
+    for (const node of this.nodes) {
+      const dx = x - node.x;
+      const dy = y - node.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance < minDistance) {
+          return false;
+      }
+    }
+    return true;
+  }
+  
+
   // Generate a random graph with nodes and calculate distances
   generateRandomGraph() {
     // Cancel any ongoing animation
     if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId)
-      this.animationFrameId = null
+        cancelAnimationFrame(this.animationFrameId);
+        this.animationFrameId = null;
     }
-
-    this.setAnimating(false)
-    this.setTotalWeight(null)
-
+    
+    this.setAnimating(false);
+    this.setTotalWeight(null);
+    
     // Clear canvas
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    
     // Generate random number of nodes (between 5 and 15)
-    const numNodes = Math.floor(Math.random() * 11) + 5
-    this.nodes = []
-
+    const numNodes = Math.floor(Math.random() * 7) + 3;
+    this.nodes = [];
+    
+    // Minimum distance between nodes (approximately 1 cm)
+    const minDistance = 38; // 1 cm ≈ 38 pixels
+    
     // Generate random nodes
-    const padding = 50
+    const padding = 50;
+    const maxAttempts = 100; // Prevent infinite loop
+    
     for (let i = 0; i < numNodes; i++) {
+      let validPosition = false;
+      let attempts = 0;
+      let x, y;
+      
+      // Try to find a valid position
+      while (!validPosition && attempts < maxAttempts) {
+        x = Math.random() * (this.canvas.width - 2 * padding) + padding;
+        y = Math.random() * (this.canvas.height - 2 * padding) + padding;
+        
+        validPosition = this.isValidNodePosition(x, y, minDistance);
+        attempts++;
+      }
+      
+      // If we couldn't find a valid position after max attempts, reduce the number of nodes
+      if (!validPosition) {
+        console.log(`Could not place node ${i} after ${maxAttempts} attempts. Stopping at ${i} nodes.`);
+        break;
+      }
+      
       this.nodes.push({
-        x: Math.random() * (this.canvas.width - 2 * padding) + padding,
-        y: Math.random() * (this.canvas.height - 2 * padding) + padding,
-        id: i,
-      })
+        x: x,
+        y: y,
+        id: i
+      });
     }
-
+    
     // Calculate distance matrix
-    this.calculateDistanceMatrix()
-
+    this.calculateDistanceMatrix();
+    
     // Draw the graph
-    this.drawGraph()
-  }
+    this.drawGraph();
+  }  
 
   // Calculate distances between all pairs of nodes
   calculateDistanceMatrix() {
-    const n = this.nodes.length
-    this.distanceMatrix = Array(n)
-      .fill(0)
-      .map(() => Array(n).fill(0))
-
+    const n = this.nodes.length;
+    this.distanceMatrix = Array(n).fill(0).map(() => Array(n).fill(0));
+    
+    // Scale factor to keep distances below 100
+    const scaleFactor = 0.2; // Adjust this value as needed
+    
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (i !== j) {
-          const dx = this.nodes[i].x - this.nodes[j].x
-          const dy = this.nodes[i].y - this.nodes[j].y
-          this.distanceMatrix[i][j] = Math.sqrt(dx * dx + dy * dy)
+            const dx = this.nodes[i].x - this.nodes[j].x;
+            const dy = this.nodes[i].y - this.nodes[j].y;
+            // Calculate distance and scale it
+            let distance = Math.sqrt(dx * dx + dy * dy) * scaleFactor;
+            
+            // Cap the distance at 99 if it's still too large
+            distance = Math.min(distance, 99);
+            
+            this.distanceMatrix[i][j] = distance;
         } else {
-          this.distanceMatrix[i][j] = Number.POSITIVE_INFINITY // Can't travel to self
+            this.distanceMatrix[i][j] = Infinity; // Can't travel to self
         }
       }
     }
@@ -176,11 +221,11 @@ class TSPVisualizer {
         this.ctx.stroke()
 
         // Draw weight
-        const weight = this.distanceMatrix[i][j].toFixed(0)
-        const midX = (node1.x + node2.x) / 2
-        const midY = (node1.y + node2.y) / 2
+        const weight = Math.round(this.distanceMatrix[i][j]); // Round to integer
+        const midX = (node1.x + node2.x) / 2;
+        const midY = (node1.y + node2.y) / 2;
 
-        this.ctx.fillText(weight, midX, midY)
+        this.ctx.fillText(weight.toString(), midX, midY);
       }
     }
 
@@ -310,14 +355,14 @@ class TSPVisualizer {
       ctx.fillText(currentCity.toString(), node1.x, node1.y)
       ctx.fillText(nextCity.toString(), node2.x, node2.y)
 
-      // Show current step info
-      ctx.fillStyle = "black"
-      ctx.font = "14px Arial"
-      ctx.textAlign = "left"
-      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, 10, 20)
-      ctx.fillText(`Current City: ${currentCity}`, 10, 40)
-      ctx.fillText(`Next City: ${nextCity}`, 10, 60)
-      ctx.fillText(`Edge Weight: ${steps[currentStep].costAdded.toFixed(2)}`, 10, 80)
+      // // Show current step info
+      // ctx.fillStyle = "black"
+      // ctx.font = "14px Arial"
+      // ctx.textAlign = "left"
+      // ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, 10, 20)
+      // ctx.fillText(`Current City: ${currentCity}`, 10, 40)
+      // ctx.fillText(`Next City: ${nextCity}`, 10, 60)
+      // ctx.fillText(`Edge Weight: ${steps[currentStep].costAdded.toFixed(2)}`, 10, 80)
 
       // Calculate cost so far
       let costSoFar = 0
