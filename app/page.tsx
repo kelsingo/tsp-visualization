@@ -1,103 +1,388 @@
-import Image from "next/image";
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [totalWeight, setTotalWeight] = useState<number | null>(null)
+  const [animating, setAnimating] = useState(false)
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const tspVisualizer = new TSPVisualizer(canvas, setTotalWeight, setAnimating)
+
+    // Generate initial random graph
+    tspVisualizer.generateRandomGraph()
+
+    // Set up event listeners
+    const handleRandomClick = () => {
+      tspVisualizer.generateRandomGraph()
+      setTotalWeight(null)
+    }
+
+    const handleCanvasClick = (e: MouseEvent) => {
+      if (animating) return
+
+      const rect = canvas.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+
+      tspVisualizer.handleNodeClick(x, y)
+    }
+
+    // Add event listeners
+    const randomButton = document.getElementById("randomButton")
+    if (randomButton) {
+      randomButton.addEventListener("click", handleRandomClick)
+    }
+
+    canvas.addEventListener("click", handleCanvasClick)
+
+    // Clean up event listeners
+    return () => {
+      if (randomButton) {
+        randomButton.removeEventListener("click", handleRandomClick)
+      }
+      canvas.removeEventListener("click", handleCanvasClick)
+    }
+  }, [animating])
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-8 bg-gray-50">
+      <h1 className="text-3xl font-bold mb-6">Traveling Salesman Problem Visualization</h1>
+
+      <div className="flex flex-col items-center mb-6">
+        <p className="text-gray-600 mb-4">
+          Click the &quot;Random&quot; button to generate a random graph. Click on any node to start the animation from
+          that node.
+        </p>
+        <Button id="randomButton" className="mb-4" disabled={animating}>
+          Random
+        </Button>
+
+        {totalWeight !== null && (
+          <Card className="p-4 bg-white shadow-md">
+            <p className="text-lg font-medium">Total Path Weight: {totalWeight.toFixed(2)}</p>
+          </Card>
+        )}
+      </div>
+
+      <div className="border border-gray-300 rounded-lg overflow-hidden shadow-lg">
+        <canvas ref={canvasRef} width={800} height={600} className="bg-white"></canvas>
+      </div>
+    </main>
+  )
+}
+
+// TSP Visualizer class
+class TSPVisualizer {
+  private canvas: HTMLCanvasElement
+  private ctx: CanvasRenderingContext2D
+  private nodes: { x: number; y: number; id: number }[] = []
+  private distanceMatrix: number[][] = []
+  private animationFrameId: number | null = null
+  private setTotalWeight: (weight: number | null) => void
+  private setAnimating: (animating: boolean) => void
+
+  constructor(
+    canvas: HTMLCanvasElement,
+    setTotalWeight: (weight: number | null) => void,
+    setAnimating: (animating: boolean) => void,
+  ) {
+    this.canvas = canvas
+    this.ctx = canvas.getContext("2d")!
+    this.setTotalWeight = setTotalWeight
+    this.setAnimating = setAnimating
+  }
+
+  // Generate a random graph with nodes and calculate distances
+  generateRandomGraph() {
+    // Cancel any ongoing animation
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+      this.animationFrameId = null
+    }
+
+    this.setAnimating(false)
+    this.setTotalWeight(null)
+
+    // Clear canvas
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+    // Generate random number of nodes (between 5 and 15)
+    const numNodes = Math.floor(Math.random() * 11) + 5
+    this.nodes = []
+
+    // Generate random nodes
+    const padding = 50
+    for (let i = 0; i < numNodes; i++) {
+      this.nodes.push({
+        x: Math.random() * (this.canvas.width - 2 * padding) + padding,
+        y: Math.random() * (this.canvas.height - 2 * padding) + padding,
+        id: i,
+      })
+    }
+
+    // Calculate distance matrix
+    this.calculateDistanceMatrix()
+
+    // Draw the graph
+    this.drawGraph()
+  }
+
+  // Calculate distances between all pairs of nodes
+  calculateDistanceMatrix() {
+    const n = this.nodes.length
+    this.distanceMatrix = Array(n)
+      .fill(0)
+      .map(() => Array(n).fill(0))
+
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i !== j) {
+          const dx = this.nodes[i].x - this.nodes[j].x
+          const dy = this.nodes[i].y - this.nodes[j].y
+          this.distanceMatrix[i][j] = Math.sqrt(dx * dx + dy * dy)
+        } else {
+          this.distanceMatrix[i][j] = Number.POSITIVE_INFINITY // Can't travel to self
+        }
+      }
+    }
+  }
+
+  // Draw the graph with nodes and edges
+  drawGraph() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+
+    // Draw edges with weights
+    this.ctx.strokeStyle = "rgba(150, 150, 150, 0.3)"
+    this.ctx.lineWidth = 1
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+    this.ctx.font = "10px Arial"
+
+    for (let i = 0; i < this.nodes.length; i++) {
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const node1 = this.nodes[i]
+        const node2 = this.nodes[j]
+
+        // Draw edge
+        this.ctx.beginPath()
+        this.ctx.moveTo(node1.x, node1.y)
+        this.ctx.lineTo(node2.x, node2.y)
+        this.ctx.stroke()
+
+        // Draw weight
+        const weight = this.distanceMatrix[i][j].toFixed(0)
+        const midX = (node1.x + node2.x) / 2
+        const midY = (node1.y + node2.y) / 2
+
+        this.ctx.fillText(weight, midX, midY)
+      }
+    }
+
+    // Draw nodes
+    for (const node of this.nodes) {
+      this.ctx.fillStyle = "#3b82f6"
+      this.ctx.beginPath()
+      this.ctx.arc(node.x, node.y, 10, 0, Math.PI * 2)
+      this.ctx.fill()
+
+      // Draw node ID
+      this.ctx.fillStyle = "white"
+      this.ctx.font = "bold 10px Arial"
+      this.ctx.textAlign = "center"
+      this.ctx.textBaseline = "middle"
+      this.ctx.fillText(node.id.toString(), node.x, node.y)
+    }
+  }
+
+  // Handle node click event
+  handleNodeClick(x: number, y: number) {
+    // Find if a node was clicked
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i]
+      const dx = x - node.x
+      const dy = y - node.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+
+      if (distance <= 10) {
+        // Node radius is now 10
+        this.startTSPAnimation(i)
+        break
+      }
+    }
+  }
+
+  // Start TSP animation from the selected node
+  startTSPAnimation(startNodeIndex: number) {
+    // Cancel any ongoing animation
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId)
+    }
+
+    this.setAnimating(true)
+
+    // Find the path using greedy algorithm
+    const result = this.findMinRoute(startNodeIndex)
+
+    // Animate the path
+    let step = 0
+    const animationSteps = result.steps
+
+    const animateStep = () => {
+      if (step < animationSteps.length) {
+        this.drawAnimationStep(animationSteps, step)
+        step++
+
+        // Use setTimeout to slow down the animation (1000ms = 1 second between steps)
+        setTimeout(() => {
+          this.animationFrameId = requestAnimationFrame(animateStep)
+        }, 1000)
+      } else {
+        // Animation complete
+        this.setTotalWeight(result.totalCost)
+        this.setAnimating(false)
+      }
+    }
+
+    // Start animation
+    animateStep()
+  }
+
+  // Draw a single animation step
+  drawAnimationStep(steps: any[], currentStep: number) {
+    // Redraw the graph
+    this.drawGraph()
+
+    const ctx = this.ctx
+
+    // Draw the path so far
+    const path = steps[currentStep].currentPath
+
+    // Draw completed path segments
+    ctx.strokeStyle = "#10b981" // Green
+    ctx.lineWidth = 3
+
+    for (let i = 0; i < path.length - 1; i++) {
+      const node1 = this.nodes[path[i]]
+      const node2 = this.nodes[path[i + 1]]
+
+      ctx.beginPath()
+      ctx.moveTo(node1.x, node1.y)
+      ctx.lineTo(node2.x, node2.y)
+      ctx.stroke()
+    }
+
+    // Highlight current edge being considered
+    if (currentStep < steps.length) {
+      const currentCity = steps[currentStep].currentCity
+      const nextCity = steps[currentStep].nextCity
+      const node1 = this.nodes[currentCity]
+      const node2 = this.nodes[nextCity]
+
+      ctx.strokeStyle = "#ef4444" // Red
+      ctx.lineWidth = 4
+      ctx.beginPath()
+      ctx.moveTo(node1.x, node1.y)
+      ctx.lineTo(node2.x, node2.y)
+      ctx.stroke()
+
+      // Highlight current and next nodes
+      ctx.fillStyle = "#ef4444" // Red
+      ctx.beginPath()
+      ctx.arc(node1.x, node1.y, 12, 0, Math.PI * 2)
+      ctx.fill()
+
+      ctx.fillStyle = "#f97316" // Orange
+      ctx.beginPath()
+      ctx.arc(node2.x, node2.y, 12, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Redraw node labels for highlighted nodes
+      ctx.fillStyle = "white"
+      ctx.font = "bold 10px Arial"
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText(currentCity.toString(), node1.x, node1.y)
+      ctx.fillText(nextCity.toString(), node2.x, node2.y)
+
+      // Show current step info
+      ctx.fillStyle = "black"
+      ctx.font = "14px Arial"
+      ctx.textAlign = "left"
+      ctx.fillText(`Step: ${currentStep + 1}/${steps.length}`, 10, 20)
+      ctx.fillText(`Current City: ${currentCity}`, 10, 40)
+      ctx.fillText(`Next City: ${nextCity}`, 10, 60)
+      ctx.fillText(`Edge Weight: ${steps[currentStep].costAdded.toFixed(2)}`, 10, 80)
+
+      // Calculate cost so far
+      let costSoFar = 0
+      for (let i = 0; i <= currentStep; i++) {
+        costSoFar += steps[i].costAdded
+      }
+      ctx.fillText(`Total Cost So Far: ${costSoFar.toFixed(2)}`, 10, 100)
+    }
+  }
+
+  // Greedy algorithm to find the minimum route
+  findMinRoute(startNodeIndex: number) {
+    const n = this.nodes.length
+    let totalCost = 0
+    let currentCity = startNodeIndex
+    const visitedCities = new Set([currentCity])
+    const path = [currentCity]
+    const steps = []
+
+    // Visit all cities
+    while (visitedCities.size < n) {
+      let minDistance = Number.POSITIVE_INFINITY
+      let nextCity = -1
+
+      // Find the nearest unvisited city
+      for (let j = 0; j < n; j++) {
+        if (!visitedCities.has(j) && this.distanceMatrix[currentCity][j] < minDistance) {
+          minDistance = this.distanceMatrix[currentCity][j]
+          nextCity = j
+        }
+      }
+
+      if (nextCity !== -1) {
+        // Record this step
+        steps.push({
+          currentCity,
+          nextCity,
+          currentPath: [...path],
+          costAdded: minDistance,
+        })
+
+        // Update variables
+        totalCost += minDistance
+        visitedCities.add(nextCity)
+        path.push(nextCity)
+        currentCity = nextCity
+      }
+    }
+
+    // Return to starting city to complete the tour
+    const returnCost = this.distanceMatrix[currentCity][startNodeIndex]
+    steps.push({
+      currentCity,
+      nextCity: startNodeIndex,
+      currentPath: [...path],
+      costAdded: returnCost,
+    })
+
+    totalCost += returnCost
+    path.push(startNodeIndex)
+
+    return {
+      totalCost,
+      finalPath: path,
+      steps,
+    }
+  }
 }
